@@ -1,0 +1,32 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-flow: column;
+    font-size: 3rem;
+    background-color: black;
+    color: whitesmoke;
+}
+
+h1,p {
+    text-align: center;
+}
+
+main {
+    flex-grow: 1;
+    display: grid;
+    place-content: center;
+}
+
+a {
+    text-decoration: none;
+    color: #81bdd8;
+}
+
+a:hover {
+    opacity: 0.85;
+}
