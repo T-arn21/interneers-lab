@@ -1,32 +1,83 @@
 * {
-    margin: 0;
-    padding: 0;
     box-sizing: border-box;
 }
+
 body {
-    min-height: 100vh;
-    display: flex;
-    flex-flow: column;
-    font-size: 3rem;
-    background-color: black;
-    color: whitesmoke;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f7fb;
+    color: #1f2937;
 }
 
-h1,p {
+.container {
+    max-width: 760px;
+    margin: 48px auto;
+    padding: 0 16px;
+}
+
+.hero {
     text-align: center;
+    margin-bottom: 28px;
 }
 
-main {
-    flex-grow: 1;
-    display: grid;
-    place-content: center;
+.hero h1 {
+    margin: 0 0 8px;
+    font-size: 2rem;
 }
 
-a {
-    text-decoration: none;
-    color: #81bdd8;
+.hero p {
+    margin: 0;
+    color: #4b5563;
 }
 
-a:hover {
-    opacity: 0.85;
+.form-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 6px 20px rgba(17, 24, 39, 0.08);
+}
+
+.form-card h2 {
+    margin: 0 0 14px;
+}
+
+.landing-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.landing-form label {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.landing-form input,
+.landing-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #ffffff;
+}
+
+.landing-form textarea {
+    resize: vertical;
+}
+
+.landing-form button {
+    margin-top: 6px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.landing-form button:hover {
+    background: #1d4ed8;
 }

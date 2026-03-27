@@ -4,19 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Interneers Landing Page</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <p> Hello there! </p>
-    <p> This is working now! </p>
+    <main class="container">
+        <section class="hero">
+            <h1>Welcome to Interneers Lab</h1>
+            <p>This is a simple landing page for the posts app.</p>
+        </section>
 
-    <h2> Creating new post!! <h2>
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Save</button>
-    </form>
-    
+        <section class="form-card">
+            <h2>Contact Form</h2>
+            <form action="#" method="post" class="landing-form">
+                {% csrf_token %}
+
+                <label for="name">Name</label>
+                <input id="name" name="name" type="text" placeholder="Your name" required>
+
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" placeholder="your@email.com" required>
+
+                <label for="message">Message</label>
+                <textarea id="message" name="message" rows="4" placeholder="Write a short message"></textarea>
+
+                <button type="submit">Submit</button>
+            </form>
+        </section>
+    </main>
 </body>
 </html>
