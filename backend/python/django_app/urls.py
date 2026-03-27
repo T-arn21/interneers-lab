@@ -21,6 +21,7 @@ admin.site.site_title = "New Admin Portal"
 admin.site.index_title = "Welcome to New Portal"
 urlpatterns = [
     path('',include('posts.urls')),
+    path('products/', include('products.urls')),
     path('admin/', admin.site.urls),
     path('hello/', hello_world),
     # path('posts/', include('posts.urls')),
