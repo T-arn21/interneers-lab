@@ -2,7 +2,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse, JsonResponse
 from rest_framework.routers import DefaultRouter
-from posts import views
 from adapters.api.views import greet_view, greet_post_view
 
 def hello_world(request):

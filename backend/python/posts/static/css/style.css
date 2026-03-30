@@ -42,19 +42,19 @@ body {
     margin: 0 0 14px;
 }
 
-.landing-form {
+.contact-form {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.landing-form label {
+.contact-form label {
     font-weight: 600;
     font-size: 0.95rem;
 }
 
-.landing-form input,
-.landing-form textarea {
+.contact-form input,
+.contact-form textarea {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid #d1d5db;
@@ -63,11 +63,11 @@ body {
     background: #ffffff;
 }
 
-.landing-form textarea {
+.contact-form textarea {
     resize: vertical;
 }
 
-.landing-form button {
+.contact-form button {
     margin-top: 6px;
     border: none;
     border-radius: 8px;
@@ -78,6 +78,6 @@ body {
     cursor: pointer;
 }
 
-.landing-form button:hover {
+.contact-form button:hover {
     background: #1d4ed8;
 }

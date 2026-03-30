@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -125,5 +126,15 @@ STATIC_ROOT = BASE_DIR /'static'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# MongoDB (mongoengine) — matches docker-compose `27019:27017` and root/example on admin.
+# Override with MONGO_HOST, MONGO_PORT, MONGO_DB_NAME, MONGO_USERNAME, MONGO_PASSWORD, MONGO_AUTH_SOURCE.
+MONGO_HOST = os.environ.get("MONGO_HOST", "localhost")
+MONGO_PORT = int(os.environ.get("MONGO_PORT", "27019"))
+MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "interneers_lab")
+MONGO_USERNAME = os.environ.get("MONGO_USERNAME", "root")
+MONGO_PASSWORD = os.environ.get("MONGO_PASSWORD", "example")
+MONGO_AUTH_SOURCE = os.environ.get("MONGO_AUTH_SOURCE", "admin")
+
 from .db import initialize_db
+
 initialize_db()

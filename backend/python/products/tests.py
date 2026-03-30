@@ -27,6 +27,10 @@ class ProductAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data["success"])
         self.assertEqual(response.data["data"]["name"], "Laptop Pro")
+        self.assertIn("created_at", response.data["data"])
+        self.assertIn("updated_at", response.data["data"])
+        self.assertIsNotNone(response.data["data"]["created_at"])
+        self.assertIsNotNone(response.data["data"]["updated_at"])
 
     def test_create_product_validation_error(self):
         response = self.client.post(
@@ -150,4 +154,10 @@ class ProductAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data["success"])
         self.assertIn("page_size", response.data["errors"])
+
+    def test_invalid_created_after_returns_400(self):
+        response = self.client.get(f"{self.base_url}?created_after=not-a-date")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data["success"])
+        self.assertIn("created_after", response.data["errors"])
 

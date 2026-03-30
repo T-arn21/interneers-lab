@@ -1,3 +1,4 @@
 Django==6.0.2
 djangorestframework
 pymongo==4.16.0
+mongoengine==0.29.1

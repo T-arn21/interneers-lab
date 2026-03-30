@@ -1,3 +1,5 @@
+# MongoDB for local dev. Python defaults (django_app/settings.py + db.py): MONGO_HOST=localhost,
+# MONGO_PORT=27019, MONGO_USERNAME=root, MONGO_PASSWORD=example, MONGO_AUTH_SOURCE=admin, MONGO_DB_NAME=interneers_lab
 services:
   mongodb:
     image: mongo:8.0

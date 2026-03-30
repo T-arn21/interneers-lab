@@ -12,7 +12,7 @@ use_case = GreetUserUseCase(greeting_service)
 def greet_view(request):
     first_name = request.GET.get("first_name")
     last_name = request.GET.get("last_name")
-
+ 
     if not first_name and not last_name:
         return JsonResponse({
         "success": False,

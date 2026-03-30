@@ -1,17 +1,25 @@
+from datetime import datetime
+
 from rest_framework import status
 from rest_framework.exceptions import APIException
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .repository import (
-    create_product,
-    get_product,
-    list_products,
-    soft_delete_product,
-    update_product,
-)
 from .serializers import ProductCreateSerializer, ProductUpdateSerializer
+from .service import ProductService
+
+
+def _parse_iso_datetime(raw: str | None) -> datetime | None:
+    if raw is None or not str(raw).strip():
+        return None
+    value = str(raw).strip()
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 class ProductPagination(PageNumberPagination):
@@ -105,7 +113,7 @@ class ProductListCreateView(ProductAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        product = create_product(serializer.validated_data)
+        product = ProductService.create(serializer.validated_data)
         return Response(
             {
                 "success": True,
@@ -121,7 +129,32 @@ class ProductListCreateView(ProductAPIView):
             return pagination_error
 
         include_deleted = _parse_bool(request.query_params.get("include_deleted"))
-        products = list_products(include_deleted=include_deleted)
+        created_after = _parse_iso_datetime(request.query_params.get("created_after"))
+        updated_after = _parse_iso_datetime(request.query_params.get("updated_after"))
+        if request.query_params.get("created_after") and created_after is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"created_after": ["Must be a valid ISO 8601 datetime."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if request.query_params.get("updated_after") and updated_after is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"updated_after": ["Must be a valid ISO 8601 datetime."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        products = ProductService.list_products(
+            include_deleted=include_deleted,
+            created_after=created_after,
+            updated_after=updated_after,
+        )
         serialized = [product.to_dict() for product in products]
 
         paginator = ProductPagination()
@@ -136,7 +169,7 @@ class ProductListCreateView(ProductAPIView):
 class ProductDetailView(ProductAPIView):
     def get(self, request, product_id: int):
         include_deleted = _parse_bool(request.query_params.get("include_deleted"))
-        product = get_product(product_id, include_deleted=include_deleted)
+        product = ProductService.get_product(product_id, include_deleted=include_deleted)
         if not product:
             return Response(
                 {
@@ -156,7 +189,7 @@ class ProductDetailView(ProductAPIView):
         )
 
     def patch(self, request, product_id: int):
-        product = get_product(product_id)
+        product = ProductService.get_product(product_id, include_deleted=False)
         if not product:
             return Response(
                 {
@@ -178,31 +211,8 @@ class ProductDetailView(ProductAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        validated = dict(serializer.validated_data)
-        if validated.get("deleted") is True:
-            deleted = soft_delete_product(product)
-            return Response(
-                {
-                    "success": True,
-                    "message": "Product deleted successfully.",
-                    "data": deleted.to_dict(),
-                }
-            )
-
-        # Do not allow "deleted" to be persisted as a regular attribute update.
-        validated.pop("deleted", None)
-        updated = update_product(product, validated)
-        return Response(
-            {
-                "success": True,
-                "message": "Product updated successfully.",
-                "data": updated.to_dict(),
-            }
-        )
-
-    def delete(self, request, product_id: int):
-        product = get_product(product_id)
-        if not product:
+        updated = ProductService.update(product_id, dict(serializer.validated_data))
+        if not updated:
             return Response(
                 {
                     "success": False,
@@ -212,7 +222,35 @@ class ProductDetailView(ProductAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        deleted = soft_delete_product(product)
+        if serializer.validated_data.get("deleted") is True:
+            return Response(
+                {
+                    "success": True,
+                    "message": "Product deleted successfully.",
+                    "data": updated.to_dict(),
+                }
+            )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Product updated successfully.",
+                "data": updated.to_dict(),
+            }
+        )
+
+    def delete(self, request, product_id: int):
+        deleted = ProductService.soft_delete(product_id)
+        if not deleted:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Product not found.",
+                    "errors": {"product_id": ["No matching active product found."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         return Response(
             {
                 "success": True,
@@ -220,4 +258,3 @@ class ProductDetailView(ProductAPIView):
                 "data": deleted.to_dict(),
             }
         )
-
