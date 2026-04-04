@@ -17,6 +17,10 @@ class ProductService:
         return repo.create_product(payload)
 
     @staticmethod
+    def create_bulk(payloads: List[Dict[str, Any]]) -> List[Product]:
+        return [repo.create_product(payload) for payload in payloads]
+
+    @staticmethod
     def list_products(
         include_deleted: bool = False,
         created_after: Optional[datetime] = None,
@@ -34,10 +38,6 @@ class ProductService:
 
     @staticmethod
     def update(product_id: int, validated: Dict[str, Any]) -> Optional[Product]:
-        """
-        Apply partial update. If validated contains deleted=True, soft-delete instead.
-        Returns None if no active product exists for product_id.
-        """
         product = repo.get_product(product_id, include_deleted=False)
         if not product:
             return None
@@ -48,7 +48,6 @@ class ProductService:
 
         data.pop("deleted", None)
         if not data:
-            # Touch updated_at only (e.g. deleted=false with no other fields)
             return repo.update_product(product, {})
 
         return repo.update_product(product, data)

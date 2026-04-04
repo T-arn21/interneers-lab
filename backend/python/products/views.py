@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import datetime
 
 from rest_framework import status
@@ -6,7 +8,14 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import ProductCreateSerializer, ProductUpdateSerializer
+from .product_category_service import ProductCategoryService
+from .serializers import (
+    CategoryProductsMutationSerializer,
+    ProductCategoryCreateSerializer,
+    ProductCategoryUpdateSerializer,
+    ProductCreateSerializer,
+    ProductUpdateSerializer,
+)
 from .service import ProductService
 
 
@@ -32,6 +41,26 @@ class ProductPagination(PageNumberPagination):
             {
                 "success": True,
                 "message": "Products fetched successfully.",
+                "data": {
+                    "count": self.page.paginator.count,
+                    "next": self.get_next_link(),
+                    "previous": self.get_previous_link(),
+                    "results": data,
+                },
+            }
+        )
+
+
+class CategoryPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 50
+
+    def get_paginated_response(self, data):
+        return Response(
+            {
+                "success": True,
+                "message": "Categories fetched successfully.",
                 "data": {
                     "count": self.page.paginator.count,
                     "next": self.get_next_link(),
@@ -78,10 +107,6 @@ def _validate_pagination_inputs(request):
 
 
 class ProductAPIView(APIView):
-    """
-    Ensures DRF exceptions still return a predictable payload shape.
-    """
-
     def handle_exception(self, exc):
         if isinstance(exc, APIException):
             detail = getattr(exc, "detail", None)
@@ -158,12 +183,111 @@ class ProductListCreateView(ProductAPIView):
         serialized = [product.to_dict() for product in products]
 
         paginator = ProductPagination()
-        try:
-            page = paginator.paginate_queryset(serialized, request, view=self)
-        except APIException as exc:
-            # E.g. invalid page size/max page size validation from DRF internals.
-            raise exc
+        page = paginator.paginate_queryset(serialized, request, view=self)
         return paginator.get_paginated_response(page)
+
+
+class ProductBulkCreateView(ProductAPIView):
+    required_columns = [
+        "name",
+        "description",
+        "category_title",
+        "price",
+        "brand",
+        "warehouse_quantity",
+    ]
+
+    def post(self, request):
+        csv_data = self._read_csv_payload(request)
+        if csv_data is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "CSV payload is required.",
+                    "errors": {"file": ["Provide text/csv body or multipart file field `file`."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            reader = csv.DictReader(io.StringIO(csv_data))
+        except Exception:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid CSV payload.",
+                    "errors": {"file": ["Unable to parse CSV."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not reader.fieldnames:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid CSV payload.",
+                    "errors": {"file": ["CSV headers are required."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        missing = [column for column in self.required_columns if column not in reader.fieldnames]
+        if missing:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid CSV headers.",
+                    "errors": {"headers": [f"Missing required columns: {', '.join(missing)}"]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payloads = []
+        row_errors = {}
+        for index, row in enumerate(reader, start=2):
+            payload = {
+                "name": row.get("name"),
+                "description": row.get("description") or "",
+                "category": row.get("category_title"),
+                "price": row.get("price"),
+                "brand": row.get("brand"),
+                "warehouse_quantity": row.get("warehouse_quantity"),
+            }
+            serializer = ProductCreateSerializer(data=payload)
+            if not serializer.is_valid():
+                row_errors[f"row_{index}"] = serializer.errors
+                continue
+            payloads.append(serializer.validated_data)
+
+        if row_errors:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation failed for bulk create.",
+                    "errors": row_errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created = ProductService.create_bulk(payloads)
+        return Response(
+            {
+                "success": True,
+                "message": "Products created successfully.",
+                "data": [product.to_dict() for product in created],
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def _read_csv_payload(self, request) -> str | None:
+        upload = request.FILES.get("file")
+        if upload is not None:
+            return upload.read().decode("utf-8")
+
+        if request.content_type and "text/csv" in request.content_type:
+            body = request.body.decode("utf-8")
+            return body if body.strip() else None
+        return None
 
 
 class ProductDetailView(ProductAPIView):
@@ -189,17 +313,6 @@ class ProductDetailView(ProductAPIView):
         )
 
     def patch(self, request, product_id: int):
-        product = ProductService.get_product(product_id, include_deleted=False)
-        if not product:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Product not found.",
-                    "errors": {"product_id": ["No matching active product found."]},
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
         serializer = ProductUpdateSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(
@@ -256,5 +369,188 @@ class ProductDetailView(ProductAPIView):
                 "success": True,
                 "message": "Product deleted successfully.",
                 "data": deleted.to_dict(),
+            }
+        )
+
+
+class ProductCategoryListCreateView(ProductAPIView):
+    def post(self, request):
+        serializer = ProductCategoryCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation failed for creating category.",
+                    "errors": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        category = ProductCategoryService.create(serializer.validated_data)
+        return Response(
+            {
+                "success": True,
+                "message": "Category created successfully.",
+                "data": category.to_dict(),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def get(self, request):
+        pagination_error = _validate_pagination_inputs(request)
+        if pagination_error:
+            return pagination_error
+        categories = [category.to_dict() for category in ProductCategoryService.list_categories()]
+        paginator = CategoryPagination()
+        page = paginator.paginate_queryset(categories, request, view=self)
+        return paginator.get_paginated_response(page)
+
+
+class ProductCategoryDetailView(ProductAPIView):
+    def get(self, request, category_id: int):
+        category = ProductCategoryService.get(category_id)
+        if not category:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Category not found.",
+                    "errors": {"category_id": ["No matching category found."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "success": True,
+                "message": "Category fetched successfully.",
+                "data": category.to_dict(),
+            }
+        )
+
+    def patch(self, request, category_id: int):
+        serializer = ProductCategoryUpdateSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation failed for updating category.",
+                    "errors": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        category = ProductCategoryService.update(category_id, serializer.validated_data)
+        if not category:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Category not found.",
+                    "errors": {"category_id": ["No matching category found."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "success": True,
+                "message": "Category updated successfully.",
+                "data": category.to_dict(),
+            }
+        )
+
+    def delete(self, request, category_id: int):
+        deleted = ProductCategoryService.delete(category_id)
+        if not deleted:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Category not found.",
+                    "errors": {"category_id": ["No matching category found."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response({"success": True, "message": "Category deleted successfully.", "data": {}})
+
+
+class ProductCategoryProductsView(ProductAPIView):
+    def get(self, request, category_id: int):
+        pagination_error = _validate_pagination_inputs(request)
+        if pagination_error:
+            return pagination_error
+        include_deleted = _parse_bool(request.query_params.get("include_deleted"))
+        products = ProductCategoryService.list_products(category_id, include_deleted=include_deleted)
+        if products is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Category not found.",
+                    "errors": {"category_id": ["No matching category found."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serialized = [product.to_dict() for product in products]
+        paginator = ProductPagination()
+        page = paginator.paginate_queryset(serialized, request, view=self)
+        return paginator.get_paginated_response(page)
+
+    def post(self, request, category_id: int):
+        serializer = CategoryProductsMutationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation failed for adding products to category.",
+                    "errors": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        updated = ProductCategoryService.add_products(
+            category_id,
+            serializer.validated_data["product_ids"],
+        )
+        if updated is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Category or products not found.",
+                    "errors": {"product_ids": ["Ensure category and all active products exist."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "success": True,
+                "message": "Products added to category successfully.",
+                "data": [product.to_dict() for product in updated],
+            }
+        )
+
+    def delete(self, request, category_id: int):
+        serializer = CategoryProductsMutationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation failed for removing products from category.",
+                    "errors": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        updated = ProductCategoryService.remove_products(
+            category_id,
+            serializer.validated_data["product_ids"],
+        )
+        if updated is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Category or products not found.",
+                    "errors": {"product_ids": ["Ensure category and all active products exist."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "success": True,
+                "message": "Products removed from category successfully.",
+                "data": [product.to_dict() for product in updated],
             }
         )

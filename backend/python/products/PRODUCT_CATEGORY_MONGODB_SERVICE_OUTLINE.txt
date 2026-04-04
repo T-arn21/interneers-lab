@@ -1,0 +1,165 @@
+Interneers Lab - Product Category + Bulk CSV Implementation Outline
+Location: interneers-lab/backend/python/products
+
+================================================================================
+Task 1) ProductCategoryService layer + ProductCategory model
+================================================================================
+
+What was added:
+- `products/models.py`
+  - New `ProductCategory` document with fields:
+    - id (SequenceField primary key)
+    - title (required, unique)
+    - description (optional, default "")
+- `products/product_category_service.py`
+  - New service layer for category CRUD + product-category assignment workflows.
+- `products/repository.py`
+  - Category repository operations:
+    - create/list/get/update/delete categories
+    - get-or-create by category title
+
+Core use cases:
+- Create category: "Food", "Kitchen Essentials"
+- Update category metadata
+- Delete category and unassign linked products
+
+Example request:
+POST /products/categories/
+{
+  "title": "Kitchen Essentials",
+  "description": "Home and utility products"
+}
+
+================================================================================
+Task 2) Model products belonging to a category
+================================================================================
+
+What changed:
+- `products/models.py`
+  - Product category moved from plain string to Mongo reference:
+    - `category_ref = ReferenceField(ProductCategory, required=False, null=True)`
+  - `Product.to_dict()` still returns public API field `category` as category title
+    for backward-compatible response shape.
+
+Backfill strategy for existing string-category products:
+1) Read existing products with legacy string category values.
+2) For each distinct category title, create/find `ProductCategory`.
+3) Set each product's `category_ref` to that document.
+4) Save products and verify in Compass.
+
+Note:
+- This code path auto-creates categories from category title on new create/update paths.
+
+================================================================================
+Task 3) Category CRUD APIs + list products by category
+================================================================================
+
+What was added:
+- `products/views.py`
+  - `ProductCategoryListCreateView`
+  - `ProductCategoryDetailView`
+  - `ProductCategoryProductsView` (GET list products in category)
+- `products/urls.py`
+  - `/products/categories/`
+  - `/products/categories/{category_id}/`
+  - `/products/categories/{category_id}/products/`
+
+Endpoints:
+- POST `/products/categories/`
+- GET `/products/categories/`
+- GET `/products/categories/{id}/`
+- PATCH `/products/categories/{id}/`
+- DELETE `/products/categories/{id}/`
+- GET `/products/categories/{id}/products/`
+
+================================================================================
+Task 4) APIs to add/remove products from categories
+================================================================================
+
+What was added:
+- `products/views.py` in `ProductCategoryProductsView`
+  - POST `/products/categories/{id}/products/`
+  - DELETE `/products/categories/{id}/products/`
+- `products/serializers.py`
+  - `CategoryProductsMutationSerializer` with payload:
+    - `{"product_ids": [1, 2, 3]}`
+- `products/repository.py`
+  - assignment/unassignment repository operations
+
+Behavior:
+- Add: sets `category_ref` for each active product
+- Remove: unsets `category_ref` for each active product
+- Returns 404 if category or required products are missing
+
+================================================================================
+Task 5) Brand validation and existing products
+================================================================================
+
+Rule implemented:
+- New writes require brand:
+  - Single create API: enforced by `ProductCreateSerializer`
+  - Update API: enforced if brand field is provided (cannot be blank)
+  - Bulk CSV create API: same serializer-level validation per row
+
+Handling existing brandless products:
+- Existing documents are not deleted or blocked from read/category operations.
+- System allows legacy products to remain while ensuring new writes provide brand.
+
+================================================================================
+Task 6) Bulk POST API from CSV
+================================================================================
+
+What was added:
+- `products/views.py`
+  - `ProductBulkCreateView`
+- `products/urls.py`
+  - `POST /products/bulk/`
+
+Accepted formats:
+- `Content-Type: text/csv` in request body
+- `multipart/form-data` using file field `file`
+
+Required CSV columns:
+- `name,description,category_title,price,brand,warehouse_quantity`
+
+Bulk behavior:
+- Parses CSV rows with `csv.DictReader`
+- Validates each row with `ProductCreateSerializer`
+- If any row fails, request returns 400 and no rows are created
+- If all pass, products are created and category titles are auto-created when missing
+
+CSV example:
+name,description,category_title,price,brand,warehouse_quantity
+Rice,Good grain,Food,100.00,Acme,4
+Pan,Steel pan,Kitchen Essentials,40.00,BrandX,5
+
+================================================================================
+Files changed
+================================================================================
+
+- products/models.py
+- products/repository.py
+- products/service.py
+- products/product_category_service.py
+- products/serializers.py
+- products/views.py
+- products/urls.py
+- products/tests.py
+
+================================================================================
+Validation + verification checklist
+================================================================================
+
+API checks:
+- Create category and list categories
+- Create product with category title and verify category exists
+- Fetch products by category
+- Add/remove products to/from category via product_ids payload
+- Bulk CSV upload with valid rows (201)
+- Bulk CSV upload with invalid brand/price row (400)
+
+MongoDB Compass checks:
+- `product_categories` collection contains title/description docs
+- `products` documents store category reference (`category_ref`)
+- Category delete unsets product `category_ref` links
+- Created/updated audit fields continue to update on product mutations

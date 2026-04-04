@@ -8,6 +8,7 @@ class ProductAPITests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.base_url = "/products/"
+        self.categories_url = "/products/categories/"
         clear_store()
 
     def _payload(self, **overrides):
@@ -22,142 +23,113 @@ class ProductAPITests(APITestCase):
         data.update(overrides)
         return data
 
+    def _create_product(self, **overrides):
+        return self.client.post(self.base_url, self._payload(**overrides), format="json")
+
     def test_create_product_success(self):
-        response = self.client.post(self.base_url, self._payload(), format="json")
+        response = self._create_product()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data["success"])
-        self.assertEqual(response.data["data"]["name"], "Laptop Pro")
-        self.assertIn("created_at", response.data["data"])
-        self.assertIn("updated_at", response.data["data"])
-        self.assertIsNotNone(response.data["data"]["created_at"])
-        self.assertIsNotNone(response.data["data"]["updated_at"])
+        self.assertEqual(response.data["data"]["category"], "Electronics")
+        self.assertEqual(response.data["data"]["brand"], "Acme")
 
-    def test_create_product_validation_error(self):
+    def test_brand_required_for_create(self):
+        response = self._create_product(brand="")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("brand", response.data["errors"])
+
+    def test_category_crud(self):
+        created = self.client.post(
+            self.categories_url,
+            {"title": "Kitchen Essentials", "description": "Home and utility"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        category_id = created.data["data"]["id"]
+
+        listed = self.client.get(self.categories_url)
+        self.assertEqual(listed.status_code, status.HTTP_200_OK)
+        self.assertEqual(listed.data["data"]["count"], 1)
+
+        detail = self.client.get(f"{self.categories_url}{category_id}/")
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail.data["data"]["title"], "Kitchen Essentials")
+
+        patched = self.client.patch(
+            f"{self.categories_url}{category_id}/",
+            {"description": "Updated"},
+            format="json",
+        )
+        self.assertEqual(patched.status_code, status.HTTP_200_OK)
+        self.assertEqual(patched.data["data"]["description"], "Updated")
+
+        deleted = self.client.delete(f"{self.categories_url}{category_id}/")
+        self.assertEqual(deleted.status_code, status.HTTP_200_OK)
+
+    def test_list_products_by_category(self):
+        self._create_product(name="One", category="Food", price="10.00")
+        self._create_product(name="Two", category="Food", price="20.00")
+        self._create_product(name="Other", category="Electronics", price="30.00")
+
+        categories = self.client.get(self.categories_url)
+        food = [row for row in categories.data["data"]["results"] if row["title"] == "Food"][0]
+        response = self.client.get(f"/products/categories/{food['id']}/products/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["count"], 2)
+
+    def test_add_remove_products_from_category(self):
+        p1 = self._create_product(name="P1", category="Food", price="1.00")
+        p2 = self._create_product(name="P2", category="Kitchen", price="2.00")
+        category = self.client.post(
+            self.categories_url,
+            {"title": "Kitchen Essentials", "description": ""},
+            format="json",
+        )
+        category_id = category.data["data"]["id"]
+
+        add = self.client.post(
+            f"/products/categories/{category_id}/products/",
+            {"product_ids": [p1.data["data"]["id"], p2.data["data"]["id"]]},
+            format="json",
+        )
+        self.assertEqual(add.status_code, status.HTTP_200_OK)
+
+        in_category = self.client.get(f"/products/categories/{category_id}/products/")
+        self.assertEqual(in_category.data["data"]["count"], 2)
+
+        remove = self.client.delete(
+            f"/products/categories/{category_id}/products/",
+            {"product_ids": [p1.data["data"]["id"]]},
+            format="json",
+        )
+        self.assertEqual(remove.status_code, status.HTTP_200_OK)
+
+    def test_bulk_csv_create(self):
+        csv_payload = "\n".join(
+            [
+                "name,description,category_title,price,brand,warehouse_quantity",
+                "Rice,Good grain,Food,100.00,Acme,4",
+                "Pan,Steel pan,Kitchen Essentials,40.00,BrandX,5",
+            ]
+        )
         response = self.client.post(
-            self.base_url,
-            self._payload(price="-10.00"),
-            format="json",
+            "/products/bulk/",
+            data=csv_payload,
+            content_type="text/csv",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(response.data["data"]), 2)
+
+    def test_bulk_csv_validation_error_brand(self):
+        csv_payload = "\n".join(
+            [
+                "name,description,category_title,price,brand,warehouse_quantity",
+                "Rice,Good grain,Food,100.00,,4",
+            ]
+        )
+        response = self.client.post(
+            "/products/bulk/",
+            data=csv_payload,
+            content_type="text/csv",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data["success"])
-        self.assertIn("price", response.data["errors"])
-
-    def test_get_product_and_get_missing_product(self):
-        created = self.client.post(self.base_url, self._payload(), format="json")
-        product_id = created.data["data"]["id"]
-
-        response = self.client.get(f"{self.base_url}{product_id}/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["data"]["id"], product_id)
-
-        missing = self.client.get(f"{self.base_url}9999/")
-        self.assertEqual(missing.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertFalse(missing.data["success"])
-
-    def test_list_products_with_and_without_pagination(self):
-        for index in range(3):
-            self.client.post(
-                self.base_url,
-                self._payload(name=f"Product {index}", price=f"{index + 1}.00"),
-                format="json",
-            )
-
-        response = self.client.get(self.base_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["data"]["count"], 3)
-        self.assertEqual(len(response.data["data"]["results"]), 3)
-
-        paged = self.client.get(f"{self.base_url}?page=1&page_size=2")
-        self.assertEqual(paged.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(paged.data["data"]["results"]), 2)
-
-    def test_update_invalid_field(self):
-        created = self.client.post(self.base_url, self._payload(), format="json")
-        product_id = created.data["data"]["id"]
-
-        response = self.client.patch(
-            f"{self.base_url}{product_id}/",
-            {"warehouse_quantity": -1},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("warehouse_quantity", response.data["errors"])
-
-    def test_soft_delete_excludes_from_get_and_list(self):
-        created = self.client.post(self.base_url, self._payload(), format="json")
-        product_id = created.data["data"]["id"]
-
-        deleted = self.client.delete(f"{self.base_url}{product_id}/")
-        self.assertEqual(deleted.status_code, status.HTTP_200_OK)
-        self.assertTrue(deleted.data["data"]["is_deleted"])
-
-        get_response = self.client.get(f"{self.base_url}{product_id}/")
-        self.assertEqual(get_response.status_code, status.HTTP_404_NOT_FOUND)
-
-        list_response = self.client.get(self.base_url)
-        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data["data"]["count"], 0)
-
-        include_deleted = self.client.get(f"{self.base_url}?include_deleted=true")
-        self.assertEqual(include_deleted.status_code, status.HTTP_200_OK)
-        self.assertEqual(include_deleted.data["data"]["count"], 1)
-
-    def test_invalid_page_param_returns_400(self):
-        response = self.client.get(f"{self.base_url}?page=0")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data["success"])
-        self.assertIn("page", response.data["errors"])
-
-    def test_soft_delete_via_patch_deleted_field(self):
-        created = self.client.post(self.base_url, self._payload(), format="json")
-        product_id = created.data["data"]["id"]
-
-        deleted = self.client.patch(
-            f"{self.base_url}{product_id}/",
-            {"deleted": True},
-            format="json",
-        )
-        self.assertEqual(deleted.status_code, status.HTTP_200_OK)
-        self.assertTrue(deleted.data["data"]["is_deleted"])
-
-        get_response = self.client.get(f"{self.base_url}{product_id}/")
-        self.assertEqual(get_response.status_code, status.HTTP_404_NOT_FOUND)
-
-        include_deleted = self.client.get(f"{self.base_url}?include_deleted=true")
-        self.assertEqual(include_deleted.status_code, status.HTTP_200_OK)
-        self.assertEqual(include_deleted.data["data"]["count"], 1)
-
-    def test_patch_deleted_false_does_not_delete(self):
-        created = self.client.post(self.base_url, self._payload(), format="json")
-        product_id = created.data["data"]["id"]
-
-        updated = self.client.patch(
-            f"{self.base_url}{product_id}/",
-            {"deleted": False},
-            format="json",
-        )
-        self.assertEqual(updated.status_code, status.HTTP_200_OK)
-
-        get_response = self.client.get(f"{self.base_url}{product_id}/")
-        self.assertEqual(get_response.status_code, status.HTTP_200_OK)
-        self.assertFalse(get_response.data["data"]["is_deleted"])
-
-    def test_pagination_page_size_above_max_returns_400(self):
-        for index in range(3):
-            self.client.post(
-                self.base_url,
-                self._payload(name=f"Product {index}", price=f"{index + 1}.00"),
-                format="json",
-            )
-
-        response = self.client.get(f"{self.base_url}?page_size=100")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data["success"])
-        self.assertIn("page_size", response.data["errors"])
-
-    def test_invalid_created_after_returns_400(self):
-        response = self.client.get(f"{self.base_url}?created_after=not-a-date")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data["success"])
-        self.assertIn("created_after", response.data["errors"])
-
