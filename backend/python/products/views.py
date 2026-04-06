@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .product_category_service import ProductCategoryService
+from .repository import CategoryFilterError
 from .serializers import (
     CategoryProductsMutationSerializer,
     ProductCategoryCreateSerializer,
@@ -75,6 +76,88 @@ def _parse_bool(value: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.lower() in {"1", "true", "yes"}
+
+
+def _parse_comma_separated_ints(raw: str | None) -> tuple[list[int] | None, str | None]:
+    if raw is None or not str(raw).strip():
+        return [], None
+    out: list[int] = []
+    for part in str(raw).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if not part.isdigit():
+            return None, f"Each category id must be a positive integer (got {part!r})."
+        out.append(int(part))
+    return out, None
+
+
+def _parse_comma_separated_titles(raw: str | None) -> list[str]:
+    if raw is None or not str(raw).strip():
+        return []
+    return [p.strip() for p in str(raw).split(",") if p.strip()]
+
+
+def _parse_optional_float(qp, key: str) -> tuple[Response | None, float | None]:
+    raw = qp.get(key)
+    if raw is None or not str(raw).strip():
+        return None, None
+    try:
+        return None, float(str(raw).strip())
+    except ValueError:
+        return (
+            Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {key: ["Must be a valid number."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            ),
+            None,
+        )
+
+
+def _parse_optional_int(qp, key: str) -> tuple[Response | None, int | None]:
+    raw = qp.get(key)
+    if raw is None or not str(raw).strip():
+        return None, None
+    try:
+        return None, int(str(raw).strip(), 10)
+    except ValueError:
+        return (
+            Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {key: ["Must be a valid integer."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            ),
+            None,
+        )
+
+
+def _parse_optional_bool(qp, key: str) -> tuple[Response | None, bool | None]:
+    raw = qp.get(key)
+    if raw is None or not str(raw).strip():
+        return None, None
+    low = str(raw).strip().lower()
+    if low in {"1", "true", "yes"}:
+        return None, True
+    if low in {"0", "false", "no"}:
+        return None, False
+    return (
+        Response(
+            {
+                "success": False,
+                "message": "Invalid query params.",
+                "errors": {key: ["Must be true/false, 1/0, or yes/no."]},
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        ),
+        None,
+    )
 
 
 def _validate_pagination_inputs(request):
@@ -153,10 +236,13 @@ class ProductListCreateView(ProductAPIView):
         if pagination_error:
             return pagination_error
 
-        include_deleted = _parse_bool(request.query_params.get("include_deleted"))
-        created_after = _parse_iso_datetime(request.query_params.get("created_after"))
-        updated_after = _parse_iso_datetime(request.query_params.get("updated_after"))
-        if request.query_params.get("created_after") and created_after is None:
+        qp = request.query_params
+        include_deleted = _parse_bool(qp.get("include_deleted"))
+        created_after = _parse_iso_datetime(qp.get("created_after"))
+        updated_after = _parse_iso_datetime(qp.get("updated_after"))
+        created_before = _parse_iso_datetime(qp.get("created_before"))
+        updated_before = _parse_iso_datetime(qp.get("updated_before"))
+        if qp.get("created_after") and created_after is None:
             return Response(
                 {
                     "success": False,
@@ -165,7 +251,7 @@ class ProductListCreateView(ProductAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if request.query_params.get("updated_after") and updated_after is None:
+        if qp.get("updated_after") and updated_after is None:
             return Response(
                 {
                     "success": False,
@@ -174,12 +260,115 @@ class ProductListCreateView(ProductAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if qp.get("created_before") and created_before is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"created_before": ["Must be a valid ISO 8601 datetime."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if qp.get("updated_before") and updated_before is None:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"updated_before": ["Must be a valid ISO 8601 datetime."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        products = ProductService.list_products(
-            include_deleted=include_deleted,
-            created_after=created_after,
-            updated_after=updated_after,
+        category_ids, ids_err = _parse_comma_separated_ints(qp.get("category_ids"))
+        if ids_err:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"category_ids": [ids_err]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        category_titles = _parse_comma_separated_titles(qp.get("category_titles"))
+
+        err, min_price = _parse_optional_float(qp, "min_price")
+        if err:
+            return err
+        err, max_price = _parse_optional_float(qp, "max_price")
+        if err:
+            return err
+        if min_price is not None and max_price is not None and min_price > max_price:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"price_range": ["min_price must be less than or equal to max_price."]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        err, min_wh = _parse_optional_int(qp, "min_warehouse_qty")
+        if err:
+            return err
+        err, max_wh = _parse_optional_int(qp, "max_warehouse_qty")
+        if err:
+            return err
+        if min_wh is not None and max_wh is not None and min_wh > max_wh:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {
+                        "warehouse_qty": [
+                            "min_warehouse_qty must be less than or equal to max_warehouse_qty."
+                        ]
+                    },
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        brand = qp.get("brand")
+        brand = str(brand).strip() if brand is not None and str(brand).strip() else None
+        brand_contains = qp.get("brand_contains")
+        brand_contains = (
+            str(brand_contains).strip()
+            if brand_contains is not None and str(brand_contains).strip()
+            else None
         )
+        search = qp.get("search")
+        search = str(search).strip() if search is not None and str(search).strip() else None
+
+        err, has_category = _parse_optional_bool(qp, "has_category")
+        if err:
+            return err
+
+        try:
+            products = ProductService.list_products(
+                include_deleted=include_deleted,
+                created_after=created_after,
+                updated_after=updated_after,
+                created_before=created_before,
+                updated_before=updated_before,
+                category_ids=category_ids or None,
+                category_titles=category_titles or None,
+                min_price=min_price,
+                max_price=max_price,
+                min_warehouse_quantity=min_wh,
+                max_warehouse_quantity=max_wh,
+                brand=brand,
+                brand_icontains=brand_contains,
+                search=search,
+                has_category=has_category,
+            )
+        except CategoryFilterError as exc:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid query params.",
+                    "errors": {"categories": [str(exc)]},
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serialized = [product.to_dict() for product in products]
 
         paginator = ProductPagination()

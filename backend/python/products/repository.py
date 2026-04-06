@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from mongoengine import Q
+
 from .models import Product, ProductCategory
 
 
@@ -34,6 +36,34 @@ def list_categories() -> List[ProductCategory]:
 
 def get_category(category_id: int) -> Optional[ProductCategory]:
     return ProductCategory.objects(id=category_id).first()
+
+
+def get_category_by_title(title: str) -> Optional[ProductCategory]:
+    return ProductCategory.objects(title=title).first()
+
+
+class CategoryFilterError(ValueError):
+    """Raised when list filter references an unknown category id or title."""
+
+
+def resolve_categories_for_filter(
+    category_ids: Optional[List[int]] = None,
+    category_titles: Optional[List[str]] = None,
+) -> List[ProductCategory]:
+    out: List[ProductCategory] = []
+    if category_ids:
+        for cid in category_ids:
+            c = get_category(cid)
+            if not c:
+                raise CategoryFilterError(f"Unknown category_id: {cid}")
+            out.append(c)
+    if category_titles:
+        for title in category_titles:
+            c = get_category_by_title(title)
+            if not c:
+                raise CategoryFilterError(f"Unknown category title: {title!r}")
+            out.append(c)
+    return list({c.id: c for c in out}.values())
 
 
 def update_category(category: ProductCategory, payload: dict) -> ProductCategory:
@@ -114,6 +144,17 @@ def list_products(
     include_deleted: bool = False,
     created_after: Optional[datetime] = None,
     updated_after: Optional[datetime] = None,
+    created_before: Optional[datetime] = None,
+    updated_before: Optional[datetime] = None,
+    filter_categories: Optional[List[ProductCategory]] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    min_warehouse_quantity: Optional[int] = None,
+    max_warehouse_quantity: Optional[int] = None,
+    brand: Optional[str] = None,
+    brand_icontains: Optional[str] = None,
+    search: Optional[str] = None,
+    has_category: Optional[bool] = None,
 ) -> List[Product]:
     qs = Product.objects
     if not include_deleted:
@@ -122,6 +163,34 @@ def list_products(
         qs = qs.filter(created_at__gte=created_after)
     if updated_after is not None:
         qs = qs.filter(updated_at__gte=updated_after)
+    if created_before is not None:
+        qs = qs.filter(created_at__lte=created_before)
+    if updated_before is not None:
+        qs = qs.filter(updated_at__lte=updated_before)
+    if min_price is not None:
+        qs = qs.filter(price__gte=min_price)
+    if max_price is not None:
+        qs = qs.filter(price__lte=max_price)
+    if min_warehouse_quantity is not None:
+        qs = qs.filter(warehouse_quantity__gte=min_warehouse_quantity)
+    if max_warehouse_quantity is not None:
+        qs = qs.filter(warehouse_quantity__lte=max_warehouse_quantity)
+    if brand is not None:
+        qs = qs.filter(brand=brand)
+    if brand_icontains:
+        qs = qs.filter(brand__icontains=brand_icontains)
+    if search:
+        term = search.strip()
+        if term:
+            qs = qs.filter(Q(name__icontains=term) | Q(description__icontains=term))
+    if has_category is True:
+        qs = qs.filter(category_ref__ne=None)
+    if has_category is False:
+        qs = qs.filter(category_ref=None)
+
+    if filter_categories:
+        qs = qs.filter(category_ref__in=filter_categories)
+
     return list(qs.order_by("-updated_at"))
 
 

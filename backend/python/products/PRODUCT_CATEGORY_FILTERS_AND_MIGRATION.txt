@@ -1,0 +1,88 @@
+Interneers Lab — Product categories: startup seeding, list filters, legacy migration
+Location: interneers-lab/backend/python/products
+
+================================================================================
+Summary of changes
+================================================================================
+
+1) Startup category seeds (idempotent)
+   - Module: category_seeds.py
+   - DEFAULT_PRODUCT_CATEGORIES defines titles/descriptions for baseline taxonomy
+     (Electronics, Food & Beverages, Home & Kitchen, Sports & Outdoors, Books & Media,
+     Health & Beauty, Uncategorized).
+   - ProductsConfig.ready() calls run_startup_seed() so categories exist after the Django
+     app loads (MongoDB must already be connected via django_app/settings.py → initialize_db).
+   - Skip seeding in environments where you do not want writes at import time:
+       PRODUCT_SKIP_CATEGORY_SEED=1
+   - Repository helper get_category_by_title() supports “create only if missing” seeding.
+
+2) Rich filters on GET /products/ (list + pagination unchanged)
+   - Query parameters (all optional unless noted):
+       category_ids       Comma-separated positive integers, e.g. 1,2,3
+                          → product’s category_ref must be one of these (OR within the set).
+       category_titles    Comma-separated exact titles, e.g. Electronics,Food
+                          → combined with category_ids as a union of categories (OR).
+       min_price, max_price
+       min_warehouse_qty, max_warehouse_qty
+       brand              Exact match on brand string.
+       brand_contains     Case-insensitive substring match on brand.
+       search             Case-insensitive match on name OR description.
+       has_category       true/false (also 1/0, yes/no) — filter on presence of category_ref.
+       created_before, updated_before
+                          ISO 8601 datetimes (same rules as created_after / updated_after).
+   - Invalid category_ids or unknown category id/title → 400 with errors.categories.
+   - min_price > max_price or min_warehouse_qty > max_warehouse_qty → 400.
+
+3) Legacy product migration (pre–ProductCategory or missing references)
+   - Module: product_migration.py — migrate_legacy_product_categories(dry_run=False).
+   - Management command:
+       python manage.py migrate_product_categories
+       python manage.py migrate_product_categories --dry-run
+   - Behavior for each document in collection `products` without category_ref:
+       • If a legacy string field `category` exists on the document (older schema), a
+         ProductCategory is get-or-created by that title and linked.
+       • Otherwise the product is assigned to the \"Uncategorized\" category (seeded at startup).
+   - Documents that already have category_ref are skipped.
+   - Uses PyMongo via mongoengine get_db() so the legacy `category` field is visible even
+     though it is not on the current MongoEngine Product model.
+
+================================================================================
+Use cases
+================================================================================
+
+- Demo / new environment: first server start creates a consistent category catalog without
+  manual POSTs to /products/categories/.
+- Merchandising APIs: filter catalog by multiple categories, price bands, stock levels,
+  and free-text search in one request.
+- Data cleanup: after introducing ProductCategory, run migrate_product_categories once to
+  attach references for old rows that only had a string or no category at all.
+
+================================================================================
+Implementation map (for maintainers)
+================================================================================
+
+- category_seeds.py          — seed data + run_startup_seed()
+- apps.py                    — ProductsConfig.ready() → run_startup_seed()
+- repository.py              — list_products(..., filter_categories=...), Q-based search,
+                               resolve_categories_for_filter(), CategoryFilterError,
+                               get_category_by_title()
+- service.py                 — ProductService.list_products forwards filters + resolves categories
+- views.py                   — ProductListCreateView.get parses query params
+- product_migration.py       — migrate_legacy_product_categories()
+- management/commands/
+  migrate_product_categories.py — operator entry point
+
+================================================================================
+Example requests
+================================================================================
+
+  GET /products/?category_ids=1,2&min_price=10&max_price=100&search=laptop
+
+  GET /products/?category_titles=Electronics,Food%20%26%20Beverages
+
+  GET /products/?has_category=false
+        (products with no category_ref — rare after migration)
+
+  GET /products/?brand_contains=acme&min_warehouse_qty=5
+
+================================================================================
