@@ -1,3 +1,5 @@
+import sys
+
 from django.apps import AppConfig
 
 
@@ -6,6 +8,8 @@ class ProductsConfig(AppConfig):
     name = "products"
 
     def ready(self) -> None:
+        if "test" in sys.argv:
+            return
         from .category_seeds import run_startup_seed
 
         run_startup_seed()
