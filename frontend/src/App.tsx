@@ -1,24 +1,31 @@
 import React from "react";
-import logo from "./logo.svg";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
+import ProductPage from "./pages/ProductPage";
 import "./App.css";
+
+function Home() {
+  return (
+    <main className="app-home">
+      <h1>Interneers Frontend Lab</h1>
+      <p>Use the navigation above to open the Product page task.</p>
+    </main>
+  );
+}
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+      <header className="app-header">
+        <nav className="app-nav" aria-label="Main navigation">
+          <Link to="/">Home</Link>
+          <Link to="/products">Products</Link>
+        </nav>
       </header>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/products" element={<ProductPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
