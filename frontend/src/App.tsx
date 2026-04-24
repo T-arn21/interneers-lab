@@ -1,13 +1,22 @@
 import React from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import ProductPage from "./pages/ProductPage";
 import "./App.css";
 
 function Home() {
   return (
     <main className="app-home">
-      <h1>Interneers Frontend Lab</h1>
-      <p>Use the navigation above to open the Product page task.</p>
+      <section className="home-hero">
+        <p className="home-hero__eyebrow">Interactive Storefront</p>
+        <h1>Interneers Frontend Lab</h1>
+        <p>
+          Explore animated product showcases and rich product interactions in
+          the Products page.
+        </p>
+        <Link className="home-hero__cta" to="/products">
+          Explore Products
+        </Link>
+      </section>
     </main>
   );
 }
@@ -16,10 +25,17 @@ function App() {
   return (
     <div className="App">
       <header className="app-header">
-        <nav className="app-nav" aria-label="Main navigation">
-          <Link to="/">Home</Link>
-          <Link to="/products">Products</Link>
-        </nav>
+        <div className="app-header__inner">
+          <nav className="app-nav" aria-label="Main navigation">
+            <NavLink to="/" end>
+              Home
+            </NavLink>
+            <NavLink to="/products">Products</NavLink>
+          </nav>
+          <button className="view-cart-button" type="button">
+            View Cart
+          </button>
+        </div>
       </header>
       <Routes>
         <Route path="/" element={<Home />} />
