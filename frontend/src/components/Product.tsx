@@ -1,4 +1,5 @@
 import React from "react";
+import { useCart } from "../context/CartContext";
 
 export interface ProductItem {
   id: number;
@@ -28,6 +29,9 @@ export default function Product({
   onReset,
   getShortDescription,
 }: ProductProps) {
+  const { cartItems, addToCart, updateQuantity } = useCart();
+  const cartItem = cartItems.find((item) => item.product.id === product.id);
+  const quantity = cartItem ? cartItem.quantity : 0;
   return (
     <article className="product-tile-wrap" onMouseLeave={() => onReset(tileId)}>
       <div className={`product-tile-flip ${isFlipped ? "is-flipped" : ""}`}>
@@ -41,9 +45,37 @@ export default function Product({
           <h3>{product.title}</h3>
           <p className="product-tile__price">${product.price.toFixed(2)}</p>
           <div className="product-tile__actions">
-            <button type="button" className="add-cart-button">
-              Add to Cart
-            </button>
+            {quantity === 0 ? (
+              <button
+                type="button"
+                className="add-cart-button"
+                onClick={() => addToCart(product)}
+              >
+                Add to Cart
+              </button>
+            ) : (
+              <div className="cart-pill">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(product.id, -1);
+                  }}
+                  className="cart-pill-btn"
+                >
+                  -
+                </button>
+                <span className="cart-pill-qty">{quantity}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(product.id, 1);
+                  }}
+                  className="cart-pill-btn"
+                >
+                  +
+                </button>
+              </div>
+            )}
             <button
               type="button"
               className="view-button"

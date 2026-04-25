@@ -4,6 +4,7 @@ import HomeShowcase from "./components/HomeShowcase";
 import ProductPage from "./pages/ProductPage";
 import AboutUsPage from "./pages/AboutUsPage";
 import CategoryPage from "./pages/CategoryPage";
+import CartPage from "./pages/CartPage";
 import "./App.css";
 
 function Home() {
@@ -64,9 +65,9 @@ function App() {
             <NavLink to="/about" className="app-nav__button">
               About Us
             </NavLink>
-            <button className="view-cart-button" type="button">
+            <Link to="/cart" className="view-cart-button">
               View Cart
-            </button>
+            </Link>
           </nav>
         </div>
       </header>
@@ -74,6 +75,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<AboutUsPage />} />
         <Route path="/category/:categoryId" element={<CategoryPage />} />
+        <Route path="/cart" element={<CartPage />} />
         <Route path="/products" element={<ProductPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

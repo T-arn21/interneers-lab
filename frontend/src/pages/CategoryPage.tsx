@@ -25,6 +25,7 @@ export default function CategoryPage() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sortMethod, setSortMethod] = useState<string>("default");
 
   useEffect(() => {
     setLoading(true);
@@ -75,11 +76,48 @@ export default function CategoryPage() {
       ? categoryTitles[categoryId]
       : "Category";
 
+  const sortedProducts = React.useMemo(() => {
+    const copy = [...products];
+    if (sortMethod === "a-z") {
+      copy.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortMethod === "price-asc") {
+      copy.sort((a, b) => a.price - b.price);
+    } else if (sortMethod === "price-desc") {
+      copy.sort((a, b) => b.price - a.price);
+    }
+    return copy;
+  }, [products, sortMethod]);
+
   return (
     <main className="app-page-container">
       <section className="category-section">
         <header className="category-header">
           <h1>{displayTitle}</h1>
+          <div className="category-filter">
+            <label
+              htmlFor="sort-filter"
+              style={{ color: "#f8fafc", marginRight: "10px" }}
+            >
+              Sort by:{" "}
+            </label>
+            <select
+              id="sort-filter"
+              value={sortMethod}
+              onChange={(e) => setSortMethod(e.target.value)}
+              style={{
+                padding: "6px",
+                borderRadius: "4px",
+                border: "1px solid #1e293b",
+                background: "#0b1120",
+                color: "#e2e8f0",
+              }}
+            >
+              <option value="default">Recommended</option>
+              <option value="a-z">A-Z (Alphabetically)</option>
+              <option value="price-asc">Price (Low to High)</option>
+              <option value="price-desc">Price (High to Low)</option>
+            </select>
+          </div>
         </header>
 
         {loading && <p>Loading products...</p>}
@@ -89,7 +127,7 @@ export default function CategoryPage() {
 
         {!loading && !error && (
           <div className="category-grid">
-            {products.map((product, index) => (
+            {sortedProducts.map((product, index) => (
               <StaticProductTile
                 key={`static-${product.id}-${index}`}
                 product={product}
