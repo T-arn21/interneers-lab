@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from mongoengine import Q
 
@@ -81,11 +81,11 @@ def delete_category(category: ProductCategory) -> None:
 def list_products_by_category(
     category: ProductCategory,
     include_deleted: bool = False,
-) -> List[Product]:
+) -> Any:
     qs = Product.objects(category_ref=category)
     if not include_deleted:
         qs = qs.filter(is_deleted=False)
-    return list(qs.order_by("-updated_at"))
+    return qs.order_by("-updated_at")
 
 
 def assign_products_to_category(category: ProductCategory, products: List[Product]) -> None:
@@ -155,7 +155,7 @@ def list_products(
     brand_icontains: Optional[str] = None,
     search: Optional[str] = None,
     has_category: Optional[bool] = None,
-) -> List[Product]:
+) -> Any:
     qs = Product.objects
     if not include_deleted:
         qs = qs.filter(is_deleted=False)
@@ -191,7 +191,7 @@ def list_products(
     if filter_categories:
         qs = qs.filter(category_ref__in=filter_categories)
 
-    return list(qs.order_by("-updated_at"))
+    return qs.order_by("-updated_at")
 
 
 def update_product(product: Product, payload: dict) -> Product:

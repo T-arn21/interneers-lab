@@ -9,6 +9,7 @@ const categoryMap: Record<string, string | null> = {
   accessories: "jewelery",
   others: "electronics",
   collabs: null,
+  sneakers: null,
 };
 
 const categoryTitles: Record<string, string> = {
@@ -42,8 +43,8 @@ export default function CategoryPage() {
 
         let filteredItems: ProductItem[] = [];
 
-        if (id === "collabs") {
-          // just shuffle all items for collabs
+        if (id === "collabs" || id === "sneakers") {
+          // just shuffle all items for collabs and sneakers
           filteredItems = [...data].sort(() => 0.5 - Math.random());
         } else if (targetApiCategory) {
           filteredItems = data.filter(

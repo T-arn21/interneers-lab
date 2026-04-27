@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from . import repository as repo
 from .models import Product, ProductCategory
@@ -33,7 +33,7 @@ class ProductCategoryService:
         return True
 
     @staticmethod
-    def list_products(category_id: int, include_deleted: bool = False) -> Optional[List[Product]]:
+    def list_products(category_id: int, include_deleted: bool = False) -> Any:
         category = repo.get_category(category_id)
         if not category:
             return None

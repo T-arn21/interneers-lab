@@ -343,7 +343,7 @@ class ProductListCreateView(ProductAPIView):
             return err
 
         try:
-            products = ProductService.list_products(
+            products_qs = ProductService.list_products(
                 include_deleted=include_deleted,
                 created_after=created_after,
                 updated_after=updated_after,
@@ -369,11 +369,11 @@ class ProductListCreateView(ProductAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        serialized = [product.to_dict() for product in products]
 
         paginator = ProductPagination()
-        page = paginator.paginate_queryset(serialized, request, view=self)
-        return paginator.get_paginated_response(page)
+        page = paginator.paginate_queryset(products_qs, request, view=self)
+        serialized = [product.to_dict() for product in page]
+        return paginator.get_paginated_response(serialized)
 
 
 class ProductBulkCreateView(ProductAPIView):
@@ -665,8 +665,8 @@ class ProductCategoryProductsView(ProductAPIView):
         if pagination_error:
             return pagination_error
         include_deleted = _parse_bool(request.query_params.get("include_deleted"))
-        products = ProductCategoryService.list_products(category_id, include_deleted=include_deleted)
-        if products is None:
+        products_qs = ProductCategoryService.list_products(category_id, include_deleted=include_deleted)
+        if products_qs is None:
             return Response(
                 {
                     "success": False,
@@ -675,10 +675,11 @@ class ProductCategoryProductsView(ProductAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
-        serialized = [product.to_dict() for product in products]
+            
         paginator = ProductPagination()
-        page = paginator.paginate_queryset(serialized, request, view=self)
-        return paginator.get_paginated_response(page)
+        page = paginator.paginate_queryset(products_qs, request, view=self)
+        serialized = [product.to_dict() for product in page]
+        return paginator.get_paginated_response(serialized)
 
     def post(self, request, category_id: int):
         serializer = CategoryProductsMutationSerializer(data=request.data)

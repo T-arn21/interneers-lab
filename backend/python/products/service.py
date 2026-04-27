@@ -38,7 +38,7 @@ class ProductService:
         brand_icontains: Optional[str] = None,
         search: Optional[str] = None,
         has_category: Optional[bool] = None,
-    ) -> List[Product]:
+    ) -> Any:
         filter_categories = None
         if category_ids or category_titles:
             filter_categories = resolve_categories_for_filter(
