@@ -3,6 +3,7 @@ Business logic for products. Controllers call this layer; persistence is in repo
 """
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from . import repository as repo
@@ -30,8 +31,8 @@ class ProductService:
         updated_before: Optional[datetime] = None,
         category_ids: Optional[List[int]] = None,
         category_titles: Optional[List[str]] = None,
-        min_price: Optional[float] = None,
-        max_price: Optional[float] = None,
+        min_price: Optional[Decimal] = None,
+        max_price: Optional[Decimal] = None,
         min_warehouse_quantity: Optional[int] = None,
         max_warehouse_quantity: Optional[int] = None,
         brand: Optional[str] = None,

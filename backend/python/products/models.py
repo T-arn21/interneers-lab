@@ -5,7 +5,7 @@ from mongoengine import (
     BooleanField,
     DateTimeField,
     Document,
-    FloatField,
+    DecimalField,
     IntField,
     ReferenceField,
     SequenceField,
@@ -42,7 +42,7 @@ class Product(Document):
     name = StringField(required=True, max_length=120)
     description = StringField(max_length=1000, default="")
     category_ref = ReferenceField(ProductCategory, required=False, null=True)
-    price = FloatField(required=True)
+    price = DecimalField(required=True)
     brand = StringField(required=False, max_length=120, null=True)
     warehouse_quantity = IntField(required=True)
     is_deleted = BooleanField(default=False)
@@ -57,7 +57,7 @@ class Product(Document):
             "name": self.name,
             "description": self.description or "",
             "category": category_title,
-            "price": float(self.price) if self.price is not None else None,
+            "price": str(self.price) if self.price is not None else None,
             "brand": self.brand,
             "warehouse_quantity": self.warehouse_quantity,
             "is_deleted": bool(self.is_deleted),

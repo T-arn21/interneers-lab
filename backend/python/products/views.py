@@ -1,6 +1,7 @@
 import csv
 import io
 from datetime import datetime
+from decimal import Decimal
 
 from rest_framework import status
 from rest_framework.exceptions import APIException
@@ -98,12 +99,12 @@ def _parse_comma_separated_titles(raw: str | None) -> list[str]:
     return [p.strip() for p in str(raw).split(",") if p.strip()]
 
 
-def _parse_optional_float(qp, key: str) -> tuple[Response | None, float | None]:
+def _parse_optional_decimal(qp, key: str) -> tuple[Response | None, Decimal | None]:
     raw = qp.get(key)
     if raw is None or not str(raw).strip():
         return None, None
     try:
-        return None, float(str(raw).strip())
+        return None, Decimal(str(raw).strip())
     except ValueError:
         return (
             Response(
@@ -291,10 +292,10 @@ class ProductListCreateView(ProductAPIView):
             )
         category_titles = _parse_comma_separated_titles(qp.get("category_titles"))
 
-        err, min_price = _parse_optional_float(qp, "min_price")
+        err, min_price = _parse_optional_decimal(qp, "min_price")
         if err:
             return err
-        err, max_price = _parse_optional_float(qp, "max_price")
+        err, max_price = _parse_optional_decimal(qp, "max_price")
         if err:
             return err
         if min_price is not None and max_price is not None and min_price > max_price:

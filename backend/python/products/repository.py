@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from mongoengine import Q
+from mongoengine import NotUniqueError, Q
 
 from .models import Product, ProductCategory
 
@@ -17,7 +18,10 @@ def get_or_create_category_by_title(title: str, description: str = "") -> Produc
     if category:
         return category
     category = ProductCategory(title=title, description=description or "")
-    category.save()
+    try:
+        category.save()
+    except NotUniqueError:
+        return ProductCategory.objects(title=title).first()
     return category
 
 
@@ -112,7 +116,7 @@ def create_product(payload: dict) -> Product:
         name=payload["name"],
         description=payload.get("description") or "",
         category_ref=category,
-        price=float(payload["price"]),
+        price=Decimal(str(payload["price"])),
         brand=payload.get("brand"),
         warehouse_quantity=payload["warehouse_quantity"],
         is_deleted=False,
@@ -147,8 +151,8 @@ def list_products(
     created_before: Optional[datetime] = None,
     updated_before: Optional[datetime] = None,
     filter_categories: Optional[List[ProductCategory]] = None,
-    min_price: Optional[float] = None,
-    max_price: Optional[float] = None,
+    min_price: Optional[Decimal] = None,
+    max_price: Optional[Decimal] = None,
     min_warehouse_quantity: Optional[int] = None,
     max_warehouse_quantity: Optional[int] = None,
     brand: Optional[str] = None,
@@ -198,7 +202,7 @@ def update_product(product: Product, payload: dict) -> Product:
     now = Product.now_utc()
     for key, value in payload.items():
         if key == "price":
-            setattr(product, key, float(value))
+            setattr(product, key, Decimal(str(value)))
             continue
         if key == "category":
             product.category_ref = get_or_create_category_by_title(str(value))

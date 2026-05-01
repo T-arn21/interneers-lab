@@ -32,6 +32,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.pythonanywhere.com']
 # Application definition
 
 INSTALLED_APPS = [
+    "django_app",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -134,7 +135,4 @@ MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "interneers_lab")
 MONGO_USERNAME = os.environ.get("MONGO_USERNAME", "root")
 MONGO_PASSWORD = os.environ.get("MONGO_PASSWORD", "example")
 MONGO_AUTH_SOURCE = os.environ.get("MONGO_AUTH_SOURCE", "admin")
-
-from .db import initialize_db
-
-initialize_db()
+
