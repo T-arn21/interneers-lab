@@ -3,16 +3,21 @@ import { useCart } from "../context/CartContext";
 
 export interface ProductItem {
   id: number;
-  title: string;
-  price: number;
+  name: string;
+  price: number | string;
   category: string;
   description: string;
   image: string;
+  brand?: string;
+  warehouse_quantity?: number;
+  is_deleted?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ProductProps {
   product: ProductItem;
-  categoryTitle: string;
+  categoryName: string;
   tileId: string;
   isFlipped: boolean;
   onToggle: (tileId: string) => void;
@@ -22,7 +27,7 @@ interface ProductProps {
 
 export default function Product({
   product,
-  categoryTitle,
+  categoryName,
   tileId,
   isFlipped,
   onToggle,
@@ -39,11 +44,13 @@ export default function Product({
           <img
             className="product-tile__image"
             src={product.image}
-            alt={product.title}
+            alt={product.name}
             loading="lazy"
           />
-          <h3>{product.title}</h3>
-          <p className="product-tile__price">${product.price.toFixed(2)}</p>
+          <h3>{product.name}</h3>
+          <p className="product-tile__price">
+            ₹{Number(product.price).toFixed(2)}
+          </p>
           <div className="product-tile__actions">
             {quantity === 0 ? (
               <button
@@ -86,7 +93,7 @@ export default function Product({
           </div>
         </div>
         <div className="product-tile product-tile-back">
-          <p className="product-tile__category">{categoryTitle}</p>
+          <p className="product-tile__category">{categoryName}</p>
           <p className="product-tile__description">
             {getShortDescription(product.description)}
           </p>

@@ -2,7 +2,7 @@ import React from "react";
 import Product, { ProductItem } from "./Product";
 
 export interface ProductCategory {
-  title: string;
+  name: string;
   apiCategory: string;
   speedClass: string;
 }
@@ -27,7 +27,7 @@ export default function ProductList({
   return (
     <section className="product-row-section">
       <header className="product-row-header">
-        <h2>{category.title}</h2>
+        <h2>{category.name}</h2>
       </header>
       <div className="product-row-marquee">
         <div className={`product-row-track ${category.speedClass}`}>
@@ -39,7 +39,7 @@ export default function ProductList({
               <Product
                 key={`${product.id}-${index}`}
                 product={product}
-                categoryTitle={category.title}
+                categoryName={category.name}
                 tileId={tileId}
                 isFlipped={isFlipped}
                 onToggle={onToggleTileView}

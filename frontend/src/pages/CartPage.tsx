@@ -6,7 +6,7 @@ export default function CartPage() {
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cartItems.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + Number(item.product.price) * item.quantity,
     0,
   );
 
@@ -63,7 +63,7 @@ export default function CartPage() {
                     >
                       <img
                         src={item.product.image}
-                        alt={item.product.title}
+                        alt={item.product.name}
                         style={{
                           width: "50px",
                           height: "50px",
@@ -75,11 +75,11 @@ export default function CartPage() {
                       <span
                         style={{ maxWidth: "300px", display: "inline-block" }}
                       >
-                        {item.product.title}
+                        {item.product.name}
                       </span>
                     </td>
                     <td style={{ padding: "16px 0", textAlign: "center" }}>
-                      ${item.product.price.toFixed(2)}
+                      ₹{Number(item.product.price).toFixed(2)}
                     </td>
                     <td style={{ padding: "16px 0", textAlign: "center" }}>
                       <div
@@ -135,7 +135,7 @@ export default function CartPage() {
                         fontWeight: "bold",
                       }}
                     >
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      ₹{(Number(item.product.price) * item.quantity).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -178,7 +178,7 @@ export default function CartPage() {
                 }}
               >
                 <span>Total Price:</span>
-                <span>${totalPrice.toFixed(2)}</span>
+                <span>₹{totalPrice.toFixed(2)}</span>
               </div>
               <button
                 type="button"

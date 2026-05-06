@@ -29,3 +29,5 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 *.txt
+
+# Run command npx prettier --write

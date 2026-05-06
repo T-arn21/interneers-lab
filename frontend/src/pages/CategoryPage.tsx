@@ -6,10 +6,10 @@ import StaticProductTile from "../components/StaticProductTile";
 const categoryMap: Record<string, string | null> = {
   mens: "men's clothing",
   womens: "women's clothing",
-  accessories: "jewelery",
-  others: "electronics",
-  collabs: null,
-  sneakers: null,
+  accessories: "accessories",
+  others: "others",
+  collabs: "collabs",
+  sneakers: "sneakers",
 };
 
 const categoryTitles: Record<string, string> = {
@@ -30,43 +30,29 @@ export default function CategoryPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("https://fakestoreapi.com/products")
+    fetch("http://localhost:8000/products/?page_size=50")
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
         return response.json();
       })
-      .then((data: ProductItem[]) => {
+      .then((data) => {
+        const rawProducts: ProductItem[] = data.data.results || [];
         const id = categoryId || "others";
         const targetApiCategory = categoryMap[id];
 
         let filteredItems: ProductItem[] = [];
 
-        if (id === "collabs" || id === "sneakers") {
-          // just shuffle all items for collabs and sneakers
-          filteredItems = [...data].sort(() => 0.5 - Math.random());
-        } else if (targetApiCategory) {
-          filteredItems = data.filter(
+        if (targetApiCategory) {
+          filteredItems = rawProducts.filter(
             (item) => item.category === targetApiCategory,
           );
         } else {
-          filteredItems = data;
+          filteredItems = rawProducts;
         }
 
-        // Duplicate items if length < 20 to strictly hit 20 slots
-        if (filteredItems.length === 0) {
-          filteredItems = data; // Last resort fallback to avoid empty page
-        }
-
-        const gridItems: ProductItem[] = [];
-        let index = 0;
-        while (gridItems.length < 20) {
-          gridItems.push(filteredItems[index % filteredItems.length]);
-          index += 1;
-        }
-
-        setProducts(gridItems);
+        setProducts(filteredItems);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -80,11 +66,11 @@ export default function CategoryPage() {
   const sortedProducts = React.useMemo(() => {
     const copy = [...products];
     if (sortMethod === "a-z") {
-      copy.sort((a, b) => a.title.localeCompare(b.title));
+      copy.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     } else if (sortMethod === "price-asc") {
-      copy.sort((a, b) => a.price - b.price);
+      copy.sort((a, b) => Number(a.price) - Number(b.price));
     } else if (sortMethod === "price-desc") {
-      copy.sort((a, b) => b.price - a.price);
+      copy.sort((a, b) => Number(b.price) - Number(a.price));
     }
     return copy;
   }, [products, sortMethod]);
@@ -126,7 +112,7 @@ export default function CategoryPage() {
           <p className="error-message">API error: {error}</p>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && sortedProducts.length > 0 && (
           <div className="category-grid">
             {sortedProducts.map((product, index) => (
               <StaticProductTile
@@ -135,6 +121,9 @@ export default function CategoryPage() {
               />
             ))}
           </div>
+        )}
+        {!loading && !error && sortedProducts.length === 0 && (
+          <p className="status-message">No products found!</p>
         )}
       </section>
     </main>

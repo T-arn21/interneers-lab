@@ -22,11 +22,16 @@ export default function StaticProductTile({ product }: StaticProductTileProps) {
         <img
           className="product-tile__image"
           src={product.image}
-          alt={product.title}
+          alt={product.name}
           loading="lazy"
         />
-        <h3>{product.title}</h3>
-        <p className="product-tile__price">${product.price.toFixed(2)}</p>
+        <h3>
+          {product.brand ? `${product.brand}, ` : ""}
+          {product.name}
+        </h3>
+        <p className="product-tile__price">
+          ₹{Number(product.price).toFixed(2)}
+        </p>
         <p className="product-tile__description static-product-tile__description">
           {getShortDescription(product.description)}
         </p>

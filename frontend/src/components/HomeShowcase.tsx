@@ -1,25 +1,27 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ProductList, { ProductCategory } from "./ProductList";
 import { ProductItem } from "./Product";
+import { useAuth } from "../context/AuthContext";
 import "../styles/ProductPage.css";
 
 const categories: ProductCategory[] = [
   {
-    title: "Men's Clothing",
+    name: "Men's Clothing",
     apiCategory: "men's clothing",
     speedClass: "speed-fast",
   },
   {
-    title: "Women's Clothing",
+    name: "Women's Clothing",
     apiCategory: "women's clothing",
     speedClass: "speed-medium",
   },
-  { title: "Accessories", apiCategory: "jewelery", speedClass: "speed-slow" },
+  { name: "Accessories", apiCategory: "jewelery", speedClass: "speed-slow" },
 ];
 
 const slideshowDescription = "LOREM IPSUM";
 
 export default function HomeShowcase() {
+  const { isLoggedIn, username } = useAuth();
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,15 +29,15 @@ export default function HomeShowcase() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
   useEffect(() => {
-    fetch("https://fakestoreapi.com/products")
+    fetch("http://localhost:8000/products/?page_size=50")
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
         return response.json();
       })
-      .then((data: ProductItem[]) => {
-        setProducts(data);
+      .then((data) => {
+        setProducts(data.data.results || []);
       })
       .catch((err: Error) => {
         setError(err.message);
@@ -131,6 +133,21 @@ export default function HomeShowcase() {
 
   return (
     <main className="app-home">
+      {isLoggedIn && (
+        <div
+          style={{
+            textAlign: "left",
+            padding: "12px 24px",
+            backgroundColor: "#1e293b",
+            color: "#f8fafc",
+            borderBottom: "1px solid #0b1120",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>
+            Hello, {username}
+          </h2>
+        </div>
+      )}
       <section
         className="home-slideshow"
         aria-label="Featured products slideshow"
@@ -139,13 +156,13 @@ export default function HomeShowcase() {
           <img
             className="home-slideshow__image"
             src={activeSlideProduct.image}
-            alt={activeSlideProduct.title}
+            alt={activeSlideProduct.name}
           />
         ) : (
           <div className="home-slideshow__image home-slideshow__placeholder" />
         )}
         <p className="home-slideshow__caption">
-          {activeSlideProduct?.title || slideshowDescription}
+          {activeSlideProduct?.name || slideshowDescription}
         </p>
 
         {slideshowProducts.length > 1 && (

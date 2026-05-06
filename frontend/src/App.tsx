@@ -5,6 +5,9 @@ import ProductPage from "./pages/ProductPage";
 import AboutUsPage from "./pages/AboutUsPage";
 import CategoryPage from "./pages/CategoryPage";
 import CartPage from "./pages/CartPage";
+import SearchPage from "./pages/SearchPage";
+import SearchBar from "./components/SearchBar";
+import AdminPage from "./pages/AdminPage";
 import "./App.css";
 
 function Home() {
@@ -25,21 +28,7 @@ function App() {
             <span className="brand-block__title">Product Store</span>
           </Link>
 
-          <div
-            className="search-shell"
-            role="search"
-            aria-label="Search products"
-          >
-            <span className="search-shell__icon" aria-hidden="true">
-              &#128269;
-            </span>
-            <input
-              className="search-shell__input"
-              type="search"
-              placeholder="what are you looking for?"
-              aria-label="Search"
-            />
-          </div>
+          <SearchBar />
 
           <nav className="app-nav" aria-label="Main navigation">
             <NavLink to="/" end>
@@ -65,6 +54,9 @@ function App() {
             <NavLink to="/about" className="app-nav__button">
               About Us
             </NavLink>
+            <NavLink to="/admin" className="app-nav__button">
+              Admin
+            </NavLink>
             <Link to="/cart" className="view-cart-button">
               View Cart
             </Link>
@@ -74,9 +66,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<AboutUsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/category/:categoryId" element={<CategoryPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/products" element={<ProductPage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
