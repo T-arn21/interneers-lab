@@ -46,6 +46,15 @@ def greet_post_view(request):
     except:
         return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
 
+    if not first_name and not last_name:
+        return JsonResponse({
+        "success": False,
+        "data": {
+            "full_name": ""
+        },
+        "message": "Both first and last name missing"
+    }, status=400)
+
     full_name = use_case.execute(first_name, last_name)
 
     return JsonResponse({

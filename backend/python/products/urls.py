@@ -7,9 +7,11 @@ from .views import (
     ProductCategoryProductsView,
     ProductDetailView,
     ProductListCreateView,
+    AdminLoginView,
 )
 
 urlpatterns = [
+    path("admin/login/", AdminLoginView.as_view(), name="admin_login"),
     path("", ProductListCreateView.as_view(), name="products_list_create"),
     path("bulk/", ProductBulkCreateView.as_view(), name="products_bulk_create"),
     path("<int:product_id>/", ProductDetailView.as_view(), name="products_detail"),

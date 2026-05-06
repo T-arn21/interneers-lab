@@ -8,3 +8,5 @@ venv/
 
 *.sqlite3
 products/*.txt
+
+scripts/seed_admin.py

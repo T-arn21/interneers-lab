@@ -44,6 +44,7 @@ class Product(Document):
     category_ref = ReferenceField(ProductCategory, required=False, null=True)
     price = DecimalField(required=True)
     brand = StringField(required=False, max_length=120, null=True)
+    image = StringField(required=False, null=True)
     warehouse_quantity = IntField(required=True)
     is_deleted = BooleanField(default=False)
     deleted_at = DateTimeField(null=True)
@@ -59,6 +60,7 @@ class Product(Document):
             "category": category_title,
             "price": str(self.price) if self.price is not None else None,
             "brand": self.brand,
+            "image": self.image,
             "warehouse_quantity": self.warehouse_quantity,
             "is_deleted": bool(self.is_deleted),
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
@@ -69,3 +71,16 @@ class Product(Document):
     @staticmethod
     def now_utc() -> datetime:
         return datetime.now(timezone.utc)
+
+class AdminUser(Document):
+    meta = {"collection": "admin_users", "indexes": ["username"]}
+
+    id = SequenceField(primary_key=True)
+    username = StringField(required=True, unique=True, max_length=120)
+    password = StringField(required=True)  # Store hashed password
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": int(self.id) if self.id is not None else None,
+            "username": self.username,
+        }

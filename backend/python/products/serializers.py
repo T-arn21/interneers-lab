@@ -3,10 +3,11 @@ from rest_framework import serializers
 
 class ProductCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
-    description = serializers.CharField(max_length=1000, required=False, allow_blank=True)
+    description = serializers.CharField(max_length=1000, required=False, allow_blank=True, allow_null=True, default="Product description")
     category = serializers.CharField(max_length=120)
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
     brand = serializers.CharField(max_length=120, required=True, allow_blank=False)
+    image = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     warehouse_quantity = serializers.IntegerField(min_value=0)
 
     def validate_name(self, value: str) -> str:
@@ -27,6 +28,12 @@ class ProductCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Brand cannot be empty.")
         return cleaned
 
+    def validate_description(self, value: str) -> str:
+        cleaned = value.strip() if value else ""
+        if not cleaned:
+            return "Product description"
+        return cleaned
+
     def validate_price(self, value):
         if value <= 0:
             raise serializers.ValidationError("Price must be greater than 0.")
@@ -35,10 +42,11 @@ class ProductCreateSerializer(serializers.Serializer):
 
 class ProductUpdateSerializer(ProductCreateSerializer):
     name = serializers.CharField(max_length=120, required=False)
-    description = serializers.CharField(max_length=1000, required=False, allow_blank=True)
+    description = serializers.CharField(max_length=1000, required=False, allow_blank=True, allow_null=True)
     category = serializers.CharField(max_length=120, required=False)
     price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     brand = serializers.CharField(max_length=120, required=False, allow_blank=False)
+    image = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     warehouse_quantity = serializers.IntegerField(min_value=0, required=False)
 
     deleted = serializers.BooleanField(required=False)

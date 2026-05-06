@@ -745,3 +745,30 @@ class ProductCategoryProductsView(ProductAPIView):
                 "data": [product.to_dict() for product in updated],
             }
         )
+
+from django.contrib.auth.hashers import check_password
+from .models import AdminUser
+
+class AdminLoginView(APIView):
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        
+        if not username or not password:
+            return Response(
+                {"success": False, "message": "Username and password are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        admin_user = AdminUser.objects(username=username).first()
+        if admin_user and check_password(password, admin_user.password):
+            return Response(
+                {"success": True, "message": "Login successful.", "username": admin_user.username},
+                status=status.HTTP_200_OK
+            )
+            
+        return Response(
+            {"success": False, "message": "Invalid username or password."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
