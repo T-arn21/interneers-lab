@@ -4,7 +4,7 @@ from rest_framework import serializers
 class ProductCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120)
     description = serializers.CharField(max_length=1000, required=False, allow_blank=True, allow_null=True, default="Product description")
-    category = serializers.CharField(max_length=120)
+    categories = serializers.ListField(child=serializers.CharField(max_length=120), allow_empty=False)
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
     brand = serializers.CharField(max_length=120, required=True, allow_blank=False)
     image = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -16,10 +16,10 @@ class ProductCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Name cannot be empty.")
         return cleaned
 
-    def validate_category(self, value: str) -> str:
-        cleaned = value.strip()
+    def validate_categories(self, value: list[str]) -> list[str]:
+        cleaned = [v.strip() for v in value if v.strip()]
         if not cleaned:
-            raise serializers.ValidationError("Category cannot be empty.")
+            raise serializers.ValidationError("At least one category is required.")
         return cleaned
 
     def validate_brand(self, value: str) -> str:
@@ -43,7 +43,7 @@ class ProductCreateSerializer(serializers.Serializer):
 class ProductUpdateSerializer(ProductCreateSerializer):
     name = serializers.CharField(max_length=120, required=False)
     description = serializers.CharField(max_length=1000, required=False, allow_blank=True, allow_null=True)
-    category = serializers.CharField(max_length=120, required=False)
+    categories = serializers.ListField(child=serializers.CharField(max_length=120), allow_empty=False, required=False)
     price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     brand = serializers.CharField(max_length=120, required=False, allow_blank=False)
     image = serializers.CharField(required=False, allow_blank=True, allow_null=True)

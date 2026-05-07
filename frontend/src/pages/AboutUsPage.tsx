@@ -6,24 +6,23 @@ export default function AboutUsPage() {
       <div className="about-us-content">
         <h1>About Us</h1>
         <p>
-          Welcome to Product Store! We are dedicated to providing you with the
-          best quality products across all categories. From fashion to
-          electronics, we handpick the finest selection for your needs.
+          Welcome to Product Store! This is a demo website created by Arnav Tiku from IIT Guwahati as a part of the Interneer's Lab. Make sure to
+          checkout all the features and enjoy shopping!!
         </p>
 
         <div className="contact-info">
           <h2>Contact Us</h2>
           <address>
             <p>
-              <strong>Address:</strong> 1234 Market Street, Suite 500
+              <strong>Address:</strong> IIT Guwahati
               <br />
-              San Francisco, CA 94103
+              North Guwahati, Assam, India, 781 039
             </p>
             <p>
-              <strong>Phone:</strong> +1 (555) 123-4567
+              <strong>Phone:</strong> +91 7011374377
             </p>
             <p>
-              <strong>Email:</strong> support@productstore.example.com
+              <strong>Email:</strong> arnavtiku@gmail.com
             </p>
           </address>
         </div>

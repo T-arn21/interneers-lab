@@ -438,7 +438,7 @@ class ProductBulkCreateView(ProductAPIView):
             payload = {
                 "name": row.get("name"),
                 "description": row.get("description") or "",
-                "category": row.get("category_title"),
+                "categories": [row.get("category_title")] if row.get("category_title") else [],
                 "price": row.get("price"),
                 "brand": row.get("brand"),
                 "warehouse_quantity": row.get("warehouse_quantity"),

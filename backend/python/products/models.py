@@ -7,6 +7,7 @@ from mongoengine import (
     Document,
     DecimalField,
     IntField,
+    ListField,
     ReferenceField,
     SequenceField,
     StringField,
@@ -35,13 +36,13 @@ class Product(Document):
 
     meta = {
         "collection": "products",
-        "indexes": ["-updated_at", "is_deleted", "category_ref"],
+        "indexes": ["-updated_at", "is_deleted", "categories_ref"],
     }
 
     id = SequenceField(primary_key=True) 
     name = StringField(required=True, max_length=120)
     description = StringField(max_length=1000, default="")
-    category_ref = ReferenceField(ProductCategory, required=False, null=True)
+    categories_ref = ListField(ReferenceField(ProductCategory), default=list)
     price = DecimalField(required=True)
     brand = StringField(required=False, max_length=120, null=True)
     image = StringField(required=False, null=True)
@@ -52,12 +53,12 @@ class Product(Document):
     updated_at = DateTimeField()
 
     def to_dict(self) -> Dict[str, Any]:
-        category_title = self.category_ref.title if self.category_ref else None
+        categories = [c.title for c in self.categories_ref if c] if self.categories_ref else []
         return {
             "id": int(self.id) if self.id is not None else None,
             "name": self.name,
             "description": self.description or "",
-            "category": category_title,
+            "categories": categories,
             "price": str(self.price) if self.price is not None else None,
             "brand": self.brand,
             "image": self.image,

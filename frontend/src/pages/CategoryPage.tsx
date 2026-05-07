@@ -46,7 +46,7 @@ export default function CategoryPage() {
 
         if (targetApiCategory) {
           filteredItems = rawProducts.filter(
-            (item) => item.category === targetApiCategory,
+            (item) => item.categories && item.categories.includes(targetApiCategory),
           );
         } else {
           filteredItems = rawProducts;
@@ -107,7 +107,12 @@ export default function CategoryPage() {
           </div>
         </header>
 
-        {loading && <p>Loading products...</p>}
+        {loading && (
+          <div className="spinner-container" aria-hidden="true">
+            <div className="spinner"></div>
+            <p className="spinner-text">Good things take time</p>
+          </div>
+        )}
         {!loading && error && (
           <p className="error-message">API error: {error}</p>
         )}

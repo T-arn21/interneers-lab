@@ -192,21 +192,9 @@ export default function HomeShowcase() {
         aria-label="Product list"
       >
         {loading && (
-          <div className="loading-rows" aria-hidden="true">
-            {Array.from({ length: 3 }).map((_, rowIndex) => (
-              <div className="loading-row" key={rowIndex}>
-                {Array.from({ length: 4 }).map((__, index) => (
-                  <article
-                    className="product-tile product-tile--skeleton"
-                    key={index}
-                  >
-                    <div className="skeleton skeleton-image" />
-                    <div className="skeleton skeleton-title" />
-                    <div className="skeleton skeleton-text short" />
-                  </article>
-                ))}
-              </div>
-            ))}
+          <div className="spinner-container" aria-hidden="true">
+            <div className="spinner"></div>
+            <p className="spinner-text">Good things take time</p>
           </div>
         )}
 
@@ -222,7 +210,9 @@ export default function HomeShowcase() {
           hasProducts &&
           categories.map((category) => {
             const baseProducts = products.filter(
-              (product) => product.category === category.apiCategory,
+              (product) =>
+                product.categories &&
+                product.categories.includes(category.apiCategory),
             );
 
             if (baseProducts.length === 0) {

@@ -72,7 +72,7 @@ export default function AdminProductManagement() {
       name: "",
       brand: "",
       price: "",
-      category: CATEGORIES[0],
+      categories: [CATEGORIES[0]],
       warehouse_quantity: 0,
       description: "",
       image: "",
@@ -194,7 +194,12 @@ export default function AdminProductManagement() {
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
-      {loading && <p>Loading products...</p>}
+      {loading && (
+        <div className="spinner-container" aria-hidden="true">
+          <div className="spinner"></div>
+          <p className="spinner-text">Good things take time</p>
+        </div>
+      )}
 
       {!loading && products.length === 0 && <p>No products found!</p>}
 
@@ -256,7 +261,7 @@ export default function AdminProductManagement() {
                   </td>
                   <td style={{ padding: "10px" }}>{p.name}</td>
                   <td style={{ padding: "10px" }}>{p.brand}</td>
-                  <td style={{ padding: "10px" }}>{p.category}</td>
+                  <td style={{ padding: "10px" }}>{p.categories ? p.categories.join(", ") : ""}</td>
                   <td style={{ padding: "10px" }}>
                     ₹{Number(p.price).toFixed(2)}
                   </td>
@@ -453,16 +458,18 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label style={{ display: "block", marginBottom: "5px" }}>
-                  Category *
+                  Categories * (Hold Ctrl/Cmd to select multiple)
                 </label>
                 <select
-                  value={currentProduct.category || CATEGORIES[0]}
-                  onChange={(e) =>
+                  multiple
+                  value={currentProduct.categories || []}
+                  onChange={(e) => {
+                    const options = Array.from(e.target.selectedOptions, option => option.value);
                     setCurrentProduct({
                       ...currentProduct,
-                      category: e.target.value,
+                      categories: options,
                     })
-                  }
+                  }}
                   style={{
                     width: "100%",
                     padding: "8px",

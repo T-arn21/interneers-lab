@@ -57,9 +57,9 @@ function App() {
             <NavLink to="/admin" className="app-nav__button">
               Admin
             </NavLink>
-            <Link to="/cart" className="view-cart-button">
+            <NavLink to="/cart" className="view-cart-button">
               View Cart
-            </Link>
+            </NavLink>
           </nav>
         </div>
       </header>

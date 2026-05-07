@@ -78,7 +78,7 @@ def update_category(category: ProductCategory, payload: dict) -> ProductCategory
 
 
 def delete_category(category: ProductCategory) -> None:
-    Product.objects(category_ref=category).update(unset__category_ref=1, updated_at=Product.now_utc())
+    Product.objects(categories_ref=category).update(pull__categories_ref=category, updated_at=Product.now_utc())
     category.delete()
 
 
@@ -86,7 +86,7 @@ def list_products_by_category(
     category: ProductCategory,
     include_deleted: bool = False,
 ) -> Any:
-    qs = Product.objects(category_ref=category)
+    qs = Product.objects(categories_ref=category)
     if not include_deleted:
         qs = qs.filter(is_deleted=False)
     return qs.order_by("-updated_at")
@@ -95,27 +95,28 @@ def list_products_by_category(
 def assign_products_to_category(category: ProductCategory, products: List[Product]) -> None:
     now = Product.now_utc()
     for product in products:
-        product.category_ref = category
-        product.updated_at = now
-        product.save()
+        if category not in product.categories_ref:
+            product.categories_ref.append(category)
+            product.updated_at = now
+            product.save()
 
 
 def remove_products_from_category(category: ProductCategory, products: List[Product]) -> None:
     now = Product.now_utc()
     for product in products:
-        if product.category_ref and product.category_ref.id == category.id:
-            product.category_ref = None
+        if category in product.categories_ref:
+            product.categories_ref.remove(category)
             product.updated_at = now
             product.save()
 
 
 def create_product(payload: dict) -> Product:
     now = Product.now_utc()
-    category = get_or_create_category_by_title(payload["category"])
+    categories = [get_or_create_category_by_title(title) for title in payload["categories"]]
     product = Product(
         name=payload["name"],
         description=payload.get("description") or "",
-        category_ref=category,
+        categories_ref=categories,
         price=Decimal(str(payload["price"])),
         brand=payload.get("brand"),
         warehouse_quantity=payload["warehouse_quantity"],
@@ -188,12 +189,12 @@ def list_products(
         if term:
             qs = qs.filter(Q(name__icontains=term) | Q(description__icontains=term))
     if has_category is True:
-        qs = qs.filter(category_ref__ne=None)
+        qs = qs.filter(categories_ref__not__size=0)
     if has_category is False:
-        qs = qs.filter(category_ref=None)
+        qs = qs.filter(categories_ref__size=0)
 
     if filter_categories:
-        qs = qs.filter(category_ref__in=filter_categories)
+        qs = qs.filter(categories_ref__in=filter_categories)
 
     return qs.order_by("-updated_at")
 
@@ -204,8 +205,8 @@ def update_product(product: Product, payload: dict) -> Product:
         if key == "price":
             setattr(product, key, Decimal(str(value)))
             continue
-        if key == "category":
-            product.category_ref = get_or_create_category_by_title(str(value))
+        if key == "categories":
+            product.categories_ref = [get_or_create_category_by_title(str(title)) for title in value]
             continue
         setattr(product, key, value)
     product.updated_at = now
